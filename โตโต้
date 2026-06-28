@@ -1,0 +1,310 @@
+-- [[ สคริปต์ตัวรันเมนูกดคลิก & อัปเกรด 20 แหล่งรายได้ + สองระบบเกิดใหม่ ]]
+-- ผู้พัฒนาสามารถนำสคริปต์นี้ไปใช้รันใน Executor ได้ทันที
+
+local Library = {}
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- ตรวจสอบหรือสร้างระบบจำลองหากรันในเกมทั่วไปที่ไม่มี Leaderstats
+if not LocalPlayer:FindFirstChild("leaderstats") then
+    local ls = Instance.new("Folder", LocalPlayer)
+    ls.Name = "leaderstats"
+    local cash = Instance.new("NumberValue", ls)
+    cash.Name = "Cash"
+    cash.Value = 0
+    local reb = Instance.new("IntValue", ls)
+    reb.Name = "Rebirths"
+    reb.Value = 0
+    local vreb = Instance.new("IntValue", ls)
+    vreb.Name = "VoidRebirths"
+    vreb.Value = 0
+end
+
+-- พลังงานกดเริ่มต้น (รายได้พื้นฐานจากแหล่งรายได้)
+if not LocalPlayer:FindFirstChild("BaseIncome") then
+    local bi = Instance.new("NumberValue", LocalPlayer)
+    bi.Name = "BaseIncome"
+    bi.Value = 10 -- เริ่มต้นที่ 10 บาท
+end
+
+-- ข้อมูลแหล่งรายได้ 20 แหล่ง (เหมือนระบบ Sell Lemon)
+local UpgradesData = {
+    {Name = "สวนมะนาวเริ่มต้น", Cost = 50, IncomePlus = 5},
+    {Name = "เครื่องคั้นมะนาวมือถือ", Cost = 250, IncomePlus = 25},
+    {Name = "พนักงานเก็บมะนาว", Cost = 1000, IncomePlus = 120},
+    {Name = "ปุ๋ยเร่งโตออร์แกนิก", Cost = 5000, IncomePlus = 600},
+    {Name = "รถแทรกเตอร์สวนมะนาว", Cost = 25000, IncomePlus = 3200},
+    {Name = "โรงงานคั้นน้ำมะนาว", Cost = 100000, IncomePlus = 15000},
+    {Name = "มะนาวสายพันธุ์ทองคำ", Cost = 500000, IncomePlus = 85000},
+    {Name = "ตู้ขายน้ำมะนาวอัตโนมัติ", Cost = 2500000, IncomePlus = 450000},
+    {Name = "เรือส่งออกผลไม้", Cost = 12000000, IncomePlus = 2500000},
+    {Name = "ห้างสรรพสินค้าเลมอน", Cost = 60000000, IncomePlus = 15000000},
+    {Name = "เครื่องจักรเลมอนควอนตัม", Cost = 350000000, IncomePlus = 90000000},
+    {Name = "ฟาร์มมะนาวลอยฟ้า", Cost = 2000000000, IncomePlus = 550000000},
+    {Name = "น้ำยาเร่งโมเลกุลเลมอน", Cost = 15000000000, IncomePlus = 4000000000},
+    {Name = "พอร์ทัลมิติมะนาว", Cost = 100000000000, IncomePlus = 30000000000},
+    {Name = "ดวงดาวแห่งเลมอน", Cost = 800000000000, IncomePlus = 250000000000},
+    {Name = "กาแล็กซีรสเปรี้ยว", Cost = 5000000000000, IncomePlus = 1800000000000},
+    {Name = "พระเจ้าแห่งการเก็บเกี่ยว", Cost = 30000000000000, IncomePlus = 12000000000000},
+    {Name = "แกนกลางพลังงานเลมอน", Cost = 150000000000000, IncomePlus = 70000000000000},
+    {Name = "สสารมืดรสเลมอน", Cost = 800000000000000, IncomePlus = 450000000000000},
+    {Name = "ที่สิ้นสุดของจักรวาลมะนาว", Cost = 5000000000000000, IncomePlus = 3000000000000000}
+}
+
+-- สร้าง GUI หลัก
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LemonClickerHub"
+ScreenGui.ResetOnSpawn = false
+-- ค้นหาที่อยู่เพื่อรองรับ CoreGui ในตัวรัน
+pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+-- หน้าต่างหลัก (Main Frame)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 550, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- ทำให้ลากเมนูไปมาบนจอได้
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner", MainFrame)
+UICorner.CornerRadius = UDim.new(0, 10)
+
+-- แถบหัวข้อ (Top Bar)
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+local TopCorner = Instance.new("UICorner", TopBar)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🍋 SELL LEMON CLICKER HUB v1.0"
+Title.TextColor3 = Color3.fromRGB(255, 230, 50)
+Title.TextSize = 18
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+-- ปุ่มปิด (Close Button)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 16
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.Parent = TopBar
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 5)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- แสดงสถานะผู้เล่นด้านซ้าย (Stats Panel)
+local StatsFrame = Instance.new("Frame")
+StatsFrame.Size = UDim2.new(0, 180, 1, -50)
+StatsFrame.Position = UDim2.new(0, 10, 0, 45)
+StatsFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 25)
+StatsFrame.Parent = MainFrame
+Instance.new("UICorner", StatsFrame)
+
+local CashLabel = Instance.new("TextLabel")
+CashLabel.Size = UDim2.new(1, -10, 0, 30)
+CashLabel.Position = UDim2.new(0, 5, 0, 10)
+CashLabel.BackgroundTransparency = 1
+CashLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+CashLabel.TextSize = 14
+CashLabel.Font = Enum.Font.SourceSansBold
+CashLabel.TextXAlignment = Enum.TextXAlignment.Left
+CashLabel.Parent = StatsFrame
+
+local RebirthLabel = CashLabel:Clone()
+RebirthLabel.Position = UDim2.new(0, 5, 0, 40)
+RebirthLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+RebirthLabel.Parent = StatsFrame
+
+local VoidLabel = CashLabel:Clone()
+VoidLabel.Position = UDim2.new(0, 5, 0, 70)
+VoidLabel.TextColor3 = Color3.fromRGB(200, 100, 255)
+VoidLabel.Parent = StatsFrame
+
+local MultiLabel = CashLabel:Clone()
+MultiLabel.Position = UDim2.new(0, 5, 0, 100)
+MultiLabel.TextColor3 = Color3.fromRGB(255, 150, 50)
+MultiLabel.Parent = StatsFrame
+
+-- อัปเดตข้อมูลตัวเลขแบบ Realtime
+spawn(function()
+    while wait(0.1) do
+        pcall(function()
+            local currentCash = LocalPlayer.leaderstats.Cash.Value
+            local currentReb = LocalPlayer.leaderstats.Rebirths.Value
+            local currentVReb = LocalPlayer.leaderstats.VoidRebirths.Value
+            
+            -- คำนวณตัวคูณ: 1 Rebirth = +1% (x0.01), 1 Void Rebirth = +100% (x1.00)
+            local rebMultiplier = 1 + (currentReb * 0.01)
+            local voidMultiplier = 1 + (currentVReb * 1.00)
+            local finalMulti = rebMultiplier * voidMultiplier
+
+            CashLabel.Text = "เงิน: " .. string.format("%.1f", currentCash) .. " บาท"
+            RebirthLabel.Text = "เกิดใหม่: " .. currentReb .. " ครั้ง"
+            VoidLabel.Text = "Void เกิดใหม่: " .. currentVReb .. " ครั้ง"
+            MultiLabel.Text = "ตัวคูณเงิน: x" .. string.format("%.2f", finalMulti)
+        end)
+    end
+end)
+
+-- ปุ่มคลิกหาเงินหลัก (Click Button)
+local ClickBtn = Instance.new("TextButton")
+ClickBtn.Size = UDim2.new(1, -20, 0, 50)
+ClickBtn.Position = UDim2.new(0, 10, 1, -120)
+ClickBtn.BackgroundColor3 = Color3.fromRGB(255, 210, 30)
+ClickBtn.Text = "🔘 คลิกเพื่อรับเงิน! 🍋"
+ClickBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+ClickBtn.TextSize = 18
+ClickBtn.Font = Enum.Font.SourceSansBold
+ClickBtn.Parent = StatsFrame
+Instance.new("UICorner", ClickBtn)
+
+ClickBtn.MouseButton1Click:Connect(function()
+    local cash = LocalPlayer.leaderstats.Cash
+    local currentReb = LocalPlayer.leaderstats.Rebirths.Value
+    local currentVReb = LocalPlayer.leaderstats.VoidRebirths.Value
+    
+    local rebMultiplier = 1 + (currentReb * 0.01)
+    local voidMultiplier = 1 + (currentVReb * 1.00)
+    local totalMultiplier = rebMultiplier * voidMultiplier
+    
+    -- รับเงินพื้นฐานจากไอเทมที่เรามี คูณด้วยระบบเกิดใหม่ทั้งหมด
+    cash.Value = cash.Value + (LocalPlayer.BaseIncome.Value * totalMultiplier)
+end)
+
+-- [ปุ่มเกิดใหม่ธรรมดา] (ใช้เงิน 1,000,000,000,000 -> 1 ล้านล้าน ได้พลังเพิ่มขึ้น x1% สะสมได้)
+local RebirthBtn = Instance.new("TextButton")
+RebirthBtn.Size = UDim2.new(1, -20, 0, 25)
+RebirthBtn.Position = UDim2.new(0, 10, 1, -65)
+RebirthBtn.BackgroundColor3 = Color3.fromRGB(0, 135, 255)
+RebirthBtn.Text = "เกิดใหม่ (ใช้ 1T)"
+RebirthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RebirthBtn.TextSize = 12
+RebirthBtn.Font = Enum.Font.SourceSansBold
+RebirthBtn.Parent = StatsFrame
+Instance.new("UICorner", RebirthBtn)
+
+RebirthBtn.MouseButton1Click:Connect(function()
+    local cash = LocalPlayer.leaderstats.Cash
+    local reb = LocalPlayer.leaderstats.Rebirths
+    local cost = 1000000000000 -- 1,000,000,000,000 (1 ล้านล้าน)
+    
+    if cash.Value >= cost then
+        cash.Value = cash.Value - cost
+        reb.Value = reb.Value + 1
+        LocalPlayer.BaseIncome.Value = 10 -- รีเซ็ตค่าเริ่มต้นหลังเกิดใหม่ตามระบบแมพแนวนี้
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = "สำเร็จ!", Text = "คุณเกิดใหม่ได้รับพลัง x1%", Duration = 3})
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = "เงินไม่พอ", Text = "ต้องการ 1,000,000,000,000 บาท!", Duration = 3})
+    end
+end)
+
+-- [ปุ่ม Void เกิดใหม่] (ใช้ 200 Rebirths ได้พลังเพิ่มขึ้น x100% ต่อ 1 Void Rebirth)
+local VoidRebirthBtn = Instance.new("TextButton")
+VoidRebirthBtn.Size = UDim2.new(1, -20, 0, 25)
+VoidRebirthBtn.Position = UDim2.new(0, 10, 1, -35)
+VoidRebirthBtn.BackgroundColor3 = Color3.fromRGB(130, 0, 255)
+VoidRebirthBtn.Text = "Void เกิดใหม่ (ใช้ 200 Rebirth)"
+VoidRebirthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VoidRebirthBtn.TextSize = 11
+VoidRebirthBtn.Font = Enum.Font.SourceSansBold
+VoidRebirthBtn.Parent = StatsFrame
+Instance.new("UICorner", VoidRebirthBtn)
+
+VoidRebirthBtn.MouseButton1Click:Connect(function()
+    local reb = LocalPlayer.leaderstats.Rebirths
+    local vreb = LocalPlayer.leaderstats.VoidRebirths
+    
+    if reb.Value >= 200 then
+        reb.Value = reb.Value - 200
+        vreb.Value = vreb.Value + 1
+        LocalPlayer.leaderstats.Cash.Value = 0
+        LocalPlayer.BaseIncome.Value = 10 -- รีเซ็ตรายได้พื้นฐานกลับไปตั้งต้น
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = "VOID SUCCESS!", Text = "คุณเข้าสู่ Void ได้รับพลังมหาศาล x100%!", Duration = 5})
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = "เงื่อนไขไม่ครบ", Text = "ต้องใช้เกิดใหม่ธรรมดา 200 ครั้ง!", Duration = 3})
+    end
+end)
+
+
+-- หน้าต่างระบบอัปเกรดฝั่งขวา (Scrolling Frame สำหรับ 20 แหล่งรายได้)
+local UpgradeScroll = Instance.new("ScrollingFrame")
+UpgradeScroll.Size = UDim2.new(1, -210, 1, -50)
+UpgradeScroll.Position = UDim2.new(0, 200, 0, 45)
+UpgradeScroll.BackgroundTransparency = 1
+UpgradeScroll.CanvasSize = UDim2.new(0, 0, 0, 20 * 55) -- คำนวณความยาวตามจำนวน 20 แหล่ง
+UpgradeScroll.ScrollBarThickness = 6
+UpgradeScroll.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout", UpgradeScroll)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 5)
+
+-- บรรจุแหล่งรายได้ทั้ง 20 แหล่งลงในเมนู
+for index, data in ipairs(UpgradesData) do
+    local ItemFrame = Instance.new("Frame")
+    ItemFrame.Size = UDim2.new(1, -10, 0, 50)
+    ItemFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    ItemFrame.LayoutOrder = index
+    ItemFrame.Parent = UpgradeScroll
+    Instance.new("UICorner", ItemFrame)
+
+    local ItemInfo = Instance.new("TextLabel")
+    ItemInfo.Size = UDim2.new(0.65, 0, 1, 0)
+    ItemInfo.Position = UDim2.new(0, 10, 0, 0)
+    ItemInfo.BackgroundTransparency = 1
+    ItemInfo.Text = index .. ". " .. data.Name .. "\n" .. "+ " .. data.IncomePlus .. " บาท/คลิก"
+    ItemInfo.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ItemInfo.TextSize = 13
+    ItemInfo.Font = Enum.Font.SourceSans
+    ItemInfo.TextXAlignment = Enum.TextXAlignment.Left
+    ItemInfo.Parent = ItemFrame
+
+    local BuyBtn = Instance.new("TextButton")
+    BuyBtn.Size = UDim2.new(0.3, 0, 0, 34)
+    BuyBtn.Position = UDim2.new(0.7, -5, 0, 8)
+    BuyBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+    BuyBtn.Text = "ซื้อ\n" .. data.Cost .. " B"
+    BuyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BuyBtn.TextSize = 11
+    BuyBtn.Font = Enum.Font.SourceSansBold
+    BuyBtn.Parent = ItemFrame
+    Instance.new("UICorner", BuyBtn)
+
+    -- ระบบทำงานตอนกดซื้ออัปเกรด
+    BuyBtn.MouseButton1Click:Connect(function()
+        local cash = LocalPlayer.leaderstats.Cash
+        if cash.Value >= data.Cost then
+            cash.Value = cash.Value - data.Cost
+            LocalPlayer.BaseIncome.Value = LocalPlayer.BaseIncome.Value + data.IncomePlus
+            BuyBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            BuyBtn.Text = "ซื้อแล้ว"
+            BuyBtn.Active = false
+            -- ส่งข้อความแจ้งเตือนเล็กๆ
+            game:GetService("StarterGui"):SetCore("SendNotification", {Title = "ซื้อสำเร็จ", Text = "ได้เพิ่มความเร็วการผลิตเรียบร้อย!", Duration = 2})
+        else
+            game:GetService("StarterGui"):SetCore("SendNotification", {Title = "เงินไม่พอ", Text = "ต้องการเงินเพิ่มอีกนิดหน่อย!", Duration = 2})
+        end
+    end)
+end
+
+-- ระบบแจ้งเตือนเมื่อรันสคริปต์เสร็จสมบูรณ์
+game:GetService("StarterGui"):SetCore("SendNotification", {
+	Title = "ตัวรันทำงาน!",
+	Text = "เมนู Sell Lemon พร้อมใช้งานแล้ว!",
+	Duration = 5
+})
