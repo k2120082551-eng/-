@@ -1,0 +1,421 @@
+-- [[ LEMON INFINITE HUB v13.0 - EASY MONEY EDITION ]]
+-- ระบบปรับแต่งพิเศษ: หาเงินง่าย เงินเฟ้อสะใจ ไม่ต้องฟาร์มเหนื่อย
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local PlayerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 5)
+if not PlayerGui then error("ไม่พบ PlayerGui ของผู้เล่น!") end
+
+if PlayerGui:FindFirstChild("LemonInfiniteHub") then
+    PlayerGui.LemonInfiniteHub:Destroy()
+end
+
+-- ==========================================
+-- [[ 💰 ระบบหน่วยเงินสเกลพระเจ้า (Inf, InfTg, 1E+) ]]
+-- ==========================================
+local Suffices = {
+    "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc", 
+    "Ud", "Dd", "Td", "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod", "Vg",
+    "Uvg", "Dvg", "Tvg", "Qavg", "Qivg", "Sxvg", "Spvg", "Ocvg", "Novg", "Tg",
+    "Utg", "Dtg", "Ttg", "Qatg", "Qitg", "Sxtg", "Sptg", "Octg", "Notg", "Qag",
+    "Cent", "Inf", "InfTg"
+}
+
+local function FormatNumber(value)
+    if value == math.huge or value ~= value then return "Inf" end
+    if value == 0 then return "0" end
+    local exp = math.floor(math.log10(math.abs(value)))
+    local i = math.floor(exp / 3) + 1
+    if i > #Suffices or exp >= 135 then 
+        local mantissa = value / (10 ^ exp)
+        return string.format("%.2fE+%d", mantissa, exp)
+    end
+    if i < 1 then i = 1 end
+    local num = value / (10 ^ ((i - 1) * 3))
+    return string.format("%.2f", num) .. Suffices[i]
+end
+
+-- [[ ⚙️ ข้อมูลจำลองภายในสคริปต์ (BUFFED FOR EASY MODE) ]]
+local PlayerData = {
+    Cash = 1000000000000, -- เริ่มต้นมาให้ 1 Trillion เลย!
+    Rebirths = 100,       -- แถมรีเบิร์ทตั้งต้นให้ 100 เพื่อเอาตัวคูณ
+    VoidRebirths = 0,
+    BaseIncome = 1000000, -- คลิกทีเดียวได้เงินหลักล้านตั้งแต่วิแรก!
+    CurrentPage = 1,
+    MaxPage = 1000, 
+    UnlockedItems = {} 
+}
+
+-- [[ 📦 อัลกอริทึมคำนวณชื่อและสเปกไอเทม ]]
+local Prefixes = {"โรงงาน", "สถานีวิจัย", "เครื่องแยก", "เตาหลอม", "มิติมหาเทพ", "ห้องแล็บ", "แท่นสกัด", "เครื่องเร่ง", "วงแหวน", "ป้อมปราการ", "อาณาจักร", "ระบบสุริยะ", "แกนกลาง", "กลุ่มดาว", "โครงข่าย", "เทวสถาน", "หอคอย", "ประตูมิติ", "หลุมดำ", "เนบิวลา"}
+local Cores = {"มะนาว", "กรดซิทริก", "เปลือกเลมอน", "น้ำมะนาวเข้มข้น", "สารสกัดสีเหลือง", "อะตอมมะนาว", "ปฏิสสารเลมอน", "นาโนบอตเปรี้ยว", "พลังงานความหวาน", "คลื่นความถี่มะนาว", "รากแก้วเลมอน", "รังสีควอนตัมเลมอน", "แร่เลมอนเนียม", "พลาสม่ามะนาว"}
+local Suffixes = {"โลก", "พันล้าน", "ข้ามมิติ", "จักรวาล", "สูงสุด", "บิ๊กแบง", "ไร้ขีดจำกัด", "ระดับโมเลกุล", "นิวเคลียร์", "ความเร็วแสง", "ยุคอวกาศ", "นิรันดร์", "ไซเบอร์เนติกส์", "ความว่างเปล่า", "พหุจักรวาล", "อนันตกาล"}
+
+local function GetItemData(index)
+    if index == 1 then return {Name = "เครื่องคั้นมะนาวมือถือ", Cost = 250, IncomePlus = 250000} -- บัฟรายได้ร้านค้าเพิ่ม 10,000 เท่า
+    elseif index == 2 then return {Name = "มีดหั่นมะนาวสเตนเลส", Cost = 1200, IncomePlus = 1300000}
+    elseif index == 3 then return {Name = "เขียงไม้คัดเกรด", Cost = 5500, IncomePlus = 6000000}
+    elseif index == 4 then return {Name = "คราดเก็บมะนาวเหล็กกล้า", Cost = 24000, IncomePlus = 28000000}
+    elseif index == 5 then return {Name = "ตะกร้าสานติดล้อ", Cost = 110000, IncomePlus = 140000000}
+    end
+
+    -- ชิ้นที่ 6 ขึ้นไปคำนวณแบบทวีคูณเร่งด่วน บัฟเพิ่มให้หาเงินง่ายขึ้นมหาศาล
+    local generatedCost = 110000 * math.pow(1.01, index - 5) -- ลดราคาตัวคูณลงเพื่อให้ซื้อได้ง่ายขึ้น
+    local generatedIncome = 140000000 * math.pow(1.05, index - 5) -- เพิ่มรายได้แบบก้าวกระโดด
+
+    local pIdx = ((index + 3) % #Prefixes) + 1
+    local cIdx = ((index * 7) % #Cores) + 1
+    local sIdx = ((index + 13) % #Suffixes) + 1
+
+    local icon = "🏭 "
+    if index > 8000 then icon = "🔱 "
+    elseif index > 5000 then icon = "👑 "
+    elseif index > 2000 then icon = "🌌 "
+    elseif index > 500 then icon = "🌀 " end
+
+    local uniqueName = string.format("%s%s%s%s [Lv.%d]", icon, Prefixes[pIdx], Cores[cIdx], Suffixes[sIdx], index)
+    return {Name = uniqueName, Cost = generatedCost, IncomePlus = generatedIncome}
+end
+
+-- ==========================================
+-- [[ 🌟 โครงสร้างหน้าต่างเมนูหลัก UI ]]
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LemonInfiniteHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 750, 0, 540)
+MainFrame.Position = UDim2.new(0.5, -375, 0.5, -270)
+MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+MainFrame.Active = true
+MainFrame.Draggable = true 
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+-- TopBar
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
+TopBar.Parent = MainFrame
+Instance.new("UICorner", TopBar)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🍋 LEMON INF HUB v13.0 | 🔥 OP EASY MONEY MODE 🔥"
+Title.TextColor3 = Color3.fromRGB(255, 215, 0)
+Title.TextSize = 13
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Parent = TopBar
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- ฝั่งซ้าย
+local LeftPanel = Instance.new("Frame")
+LeftPanel.Size = UDim2.new(0, 230, 1, -55)
+LeftPanel.Position = UDim2.new(0, 10, 0, 48)
+LeftPanel.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+LeftPanel.Parent = MainFrame
+Instance.new("UICorner", LeftPanel)
+
+local CashLabel = Instance.new("TextLabel")
+CashLabel.Size = UDim2.new(1, -20, 0, 22)
+CashLabel.Position = UDim2.new(0, 10, 0, 10)
+CashLabel.BackgroundTransparency = 1
+CashLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+CashLabel.TextSize = 13
+CashLabel.Font = Enum.Font.SourceSansBold
+CashLabel.TextXAlignment = Enum.TextXAlignment.Left
+CashLabel.Parent = LeftPanel
+
+local RebirthLabel = Instance.new("TextLabel")
+RebirthLabel.Size = UDim2.new(1, -20, 0, 22)
+RebirthLabel.Position = UDim2.new(0, 10, 0, 32)
+RebirthLabel.BackgroundTransparency = 1
+RebirthLabel.TextColor3 = Color3.fromRGB(80, 180, 255)
+RebirthLabel.TextSize = 13
+RebirthLabel.Font = Enum.Font.SourceSansBold
+RebirthLabel.TextXAlignment = Enum.TextXAlignment.Left
+RebirthLabel.Parent = LeftPanel
+
+local VoidLabel = Instance.new("TextLabel")
+VoidLabel.Size = UDim2.new(1, -20, 0, 22)
+VoidLabel.Position = UDim2.new(0, 10, 0, 54)
+VoidLabel.BackgroundTransparency = 1
+VoidLabel.TextColor3 = Color3.fromRGB(180, 100, 255)
+VoidLabel.TextSize = 13
+VoidLabel.Font = Enum.Font.SourceSansBold
+VoidLabel.TextXAlignment = Enum.TextXAlignment.Left
+VoidLabel.Parent = LeftPanel
+
+local MultiLabel = Instance.new("TextLabel")
+MultiLabel.Size = UDim2.new(1, -20, 0, 22)
+MultiLabel.Position = UDim2.new(0, 10, 0, 76)
+MultiLabel.BackgroundTransparency = 1
+MultiLabel.TextColor3 = Color3.fromRGB(255, 140, 40)
+MultiLabel.TextSize = 13
+MultiLabel.Font = Enum.Font.SourceSansBold
+MultiLabel.TextXAlignment = Enum.TextXAlignment.Left
+MultiLabel.Parent = LeftPanel
+
+local ClickBtn = Instance.new("TextButton")
+ClickBtn.Size = UDim2.new(1, -20, 0, 40)
+ClickBtn.Position = UDim2.new(0, 10, 0, 110)
+ClickBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 100)
+ClickBtn.Text = "🚀 FAST AUTO-CLICK (HOLD/TAP) 🍋"
+ClickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClickBtn.TextSize = 12
+ClickBtn.Font = Enum.Font.SourceSansBold
+ClickBtn.Parent = LeftPanel
+Instance.new("UICorner", ClickBtn)
+
+local RTitle = Instance.new("TextLabel")
+RTitle.Size = UDim2.new(1, -20, 0, 20)
+RTitle.Position = UDim2.new(0, 10, 0, 165)
+RTitle.BackgroundTransparency = 1
+RTitle.Text = "🛠️ MULTI-REBIRTH SYSTEM (CHEAP COST)"
+RTitle.TextColor3 = Color3.fromRGB(150, 150, 150)
+RTitle.TextSize = 11
+RTitle.Font = Enum.Font.SourceSansBold
+RTitle.TextXAlignment = Enum.TextXAlignment.Left
+RTitle.Parent = LeftPanel
+
+local AmountInput = Instance.new("TextBox")
+AmountInput.Size = UDim2.new(1, -20, 0, 25)
+AmountInput.Position = UDim2.new(0, 10, 0, 190)
+AmountInput.BackgroundColor3 = Color3.fromRGB(28, 35, 28)
+AmountInput.Text = "1000" -- ตั้งค่าเริ่มต้นให้เพิ่มทีละ 1000 เลเวลเลย
+AmountInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+AmountInput.Parent = LeftPanel
+Instance.new("UICorner", AmountInput)
+
+local CostInput = Instance.new("TextBox")
+CostInput.Size = UDim2.new(1, -20, 0, 25)
+CostInput.Position = UDim2.new(0, 10, 0, 220)
+CostInput.BackgroundColor3 = Color3.fromRGB(35, 28, 28)
+CostInput.Text = "1" -- ปรับต้นทุนเหลือแค่ 1 ดอลลาร์ต่อการรีเบิร์ทหนึ่งครั้ง หาง่ายสุดๆ!
+CostInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+CostInput.Parent = LeftPanel
+Instance.new("UICorner", CostInput)
+
+local RebirthBtn = Instance.new("TextButton")
+RebirthBtn.Size = UDim2.new(1, -20, 0, 32)
+RebirthBtn.Position = UDim2.new(0, 10, 0, 255)
+RebirthBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
+RebirthBtn.Text = "🔁 EXECUTE REBIRTH"
+RebirthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RebirthBtn.Font = Enum.Font.SourceSansBold
+RebirthBtn.Parent = LeftPanel
+Instance.new("UICorner", RebirthBtn)
+
+local VoidBtn = Instance.new("TextButton")
+VoidBtn.Size = UDim2.new(1, -20, 0, 32)
+VoidBtn.Position = UDim2.new(0, 10, 1, -42)
+VoidBtn.BackgroundColor3 = Color3.fromRGB(110, 0, 220)
+VoidBtn.Text = "🔮 VOID RESET (EASY REQ: 10 Reb)" -- ลดเงื่อนไขเหลือแค่ 10 รีเบิร์ท
+VoidBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VoidBtn.Font = Enum.Font.SourceSansBold
+VoidBtn.Parent = LeftPanel
+Instance.new("UICorner", VoidBtn)
+
+-- ฝั่งขวา
+local RightContainer = Instance.new("Frame")
+RightContainer.Size = UDim2.new(1, -260, 1, -55)
+RightContainer.Position = UDim2.new(0, 250, 0, 48)
+RightContainer.BackgroundTransparency = 1
+RightContainer.Parent = MainFrame
+
+local ItemListFrame = Instance.new("Frame")
+ItemListFrame.Size = UDim2.new(1, 0, 1, -45)
+ItemListFrame.BackgroundTransparency = 1
+ItemListFrame.Parent = RightContainer
+
+local UIListLayout = Instance.new("UIListLayout", ItemListFrame)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 4)
+
+local PageControlFrame = Instance.new("Frame")
+PageControlFrame.Size = UDim2.new(1, 0, 0, 35)
+PageControlFrame.Position = UDim2.new(0, 0, 1, -35)
+PageControlFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 33)
+PageControlFrame.Parent = RightContainer
+Instance.new("UICorner", PageControlFrame)
+
+local PrevBtn = Instance.new("TextButton")
+PrevBtn.Size = UDim2.new(0, 60, 1, -10)
+PrevBtn.Position = UDim2.new(0, 5, 0, 5)
+PrevBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+PrevBtn.Text = "◀ ย้อน"
+PrevBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PrevBtn.Font = Enum.Font.SourceSansBold
+PrevBtn.Parent = PageControlFrame
+Instance.new("UICorner", PrevBtn)
+
+local NextBtn = Instance.new("TextButton")
+NextBtn.Size = UDim2.new(0, 60, 1, -10)
+NextBtn.Position = UDim2.new(1, -65, 0, 5)
+NextBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+NextBtn.Text = "ถัดไป ▶"
+NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NextBtn.Font = Enum.Font.SourceSansBold
+NextBtn.Parent = PageControlFrame
+Instance.new("UICorner", NextBtn)
+
+local PageLabel = Instance.new("TextLabel")
+PageLabel.Size = UDim2.new(1, -140, 1, 0)
+PageLabel.Position = UDim2.new(0, 70, 0, 0)
+PageLabel.BackgroundTransparency = 1
+PageLabel.Text = "หน้า 1 / 1000"
+PageLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+PageLabel.TextSize = 12
+PageLabel.Font = Enum.Font.SourceSansBold
+PageLabel.Parent = PageControlFrame
+
+-- ==========================================
+-- [[ ⚙️ ฟังก์ชันการเรนเดอร์และอัปเดตค่า ]]
+-- ==========================================
+local function RefreshUI()
+    -- บัฟตัวคูณจาก Rebirth และ VoidRebirth ให้แรงขึ้น 100 เท่า!
+    local totalMultiplier = (1 + (PlayerData.Rebirths * 1.00)) * (1 + (PlayerData.VoidRebirths * 10.00))
+    CashLabel.Text = "Money: $" .. FormatNumber(PlayerData.Cash)
+    RebirthLabel.Text = "Rebirths: " .. FormatNumber(PlayerData.Rebirths)
+    VoidLabel.Text = "Void Rebirths: " .. FormatNumber(PlayerData.VoidRebirths)
+    MultiLabel.Text = "Income/Click: " .. FormatNumber(PlayerData.BaseIncome * totalMultiplier)
+end
+
+local function RenderShopPage()
+    for _, child in ipairs(ItemListFrame:GetChildren()) do
+        if child:IsA("Frame") then child:Destroy() end
+    end
+    
+    PageLabel.Text = string.format("หน้า %d / %d (ไอเทมลำดับที่ %d - %d)", PlayerData.CurrentPage, PlayerData.MaxPage, (PlayerData.CurrentPage-1)*10 + 1, PlayerData.CurrentPage*10)
+    
+    local startIdx = (PlayerData.CurrentPage - 1) * 10 + 1
+    local endIdx = startIdx + 9
+    
+    for index = startIdx, endIdx do
+        local itemData = GetItemData(index)
+        
+        local ItemFrame = Instance.new("Frame")
+        ItemFrame.Size = UDim2.new(1, -5, 0, 42)
+        ItemFrame.BackgroundColor3 = Color3.fromRGB(33, 33, 39)
+        ItemFrame.Parent = ItemListFrame
+        Instance.new("UICorner", ItemFrame)
+        
+        local ItemInfo = Instance.new("TextLabel")
+        ItemInfo.Size = UDim2.new(0.68, 0, 1, 0)
+        ItemInfo.Position = UDim2.new(0, 10, 0, 0)
+        ItemInfo.BackgroundTransparency = 1
+        ItemInfo.Text = string.format("%s\n⚡ +%s / คลิก", itemData.Name, FormatNumber(itemData.IncomePlus))
+        ItemInfo.TextColor3 = Color3.fromRGB(240, 240, 240)
+        ItemInfo.TextSize = 10
+        ItemInfo.TextXAlignment = Enum.TextXAlignment.Left
+        ItemInfo.Parent = ItemFrame
+        
+        local BuyBtn = Instance.new("TextButton")
+        BuyBtn.Size = UDim2.new(0.28, 0, 0, 30)
+        BuyBtn.Position = UDim2.new(0.72, -5, 0, 6)
+        BuyBtn.Parent = ItemFrame
+        Instance.new("UICorner", BuyBtn)
+        
+        if PlayerData.UnlockedItems[index] then
+            BuyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            BuyBtn.Text = "ปลดล็อกแล้ว"
+            BuyBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+            BuyBtn.TextSize = 9
+        else
+            BuyBtn.BackgroundColor3 = Color3.fromRGB(45, 140, 45)
+            BuyBtn.Text = "ซื้อ\n$" .. FormatNumber(itemData.Cost)
+            BuyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            BuyBtn.TextSize = 9
+            BuyBtn.Font = Enum.Font.SourceSansBold
+            
+            BuyBtn.MouseButton1Click:Connect(function()
+                if PlayerData.Cash >= itemData.Cost and not PlayerData.UnlockedItems[index] then
+                    PlayerData.Cash = PlayerData.Cash - itemData.Cost
+                    PlayerData.BaseIncome = PlayerData.BaseIncome + itemData.IncomePlus
+                    PlayerData.UnlockedItems[index] = true
+                    BuyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+                    BuyBtn.Text = "ปลดล็อกแล้ว"
+                    BuyBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+                    RefreshUI()
+                end
+            end)
+        end
+    end
+end
+
+-- ==========================================
+-- [[ 🔘 การเชื่อมต่อระบบปุ่มกดต่างๆ ]]
+-- ==========================================
+
+-- บัฟปุ่มกดให้เป็นระบบจำลอง Auto Click (กดครั้งเดียวเหมือนคลิกให้ 20 ครั้ง)
+ClickBtn.MouseButton1Click:Connect(function()
+    local totalMultiplier = (1 + (PlayerData.Rebirths * 1.00)) * (1 + (PlayerData.VoidRebirths * 10.00))
+    local incomePerClick = PlayerData.BaseIncome * totalMultiplier
+    
+    -- ลูปเพิ่มเงินให้ 20 เท่าในการกดหนึ่งครั้ง ปั๊มเงินไวติดเทอร์โบ
+    for i = 1, 20 do
+        PlayerData.Cash = PlayerData.Cash + incomePerClick
+    end
+    RefreshUI()
+end)
+
+RebirthBtn.MouseButton1Click:Connect(function()
+    local amt = tonumber(AmountInput.Text) or 1
+    local cpr = tonumber(CostInput.Text) or 1
+    local totalCost = amt * cpr
+    if PlayerData.Cash >= totalCost then
+        PlayerData.Cash = PlayerData.Cash - totalCost
+        PlayerData.Rebirths = PlayerData.Rebirths + amt
+        PlayerData.BaseIncome = 1000000 -- มอบ BaseIncome หลักล้านคืนให้หลังรีเบิร์ท ไม่ต้องเริ่มจาก 10 ใหม่
+        PlayerData.UnlockedItems = {} 
+        RenderShopPage()
+        RefreshUI()
+    end
+end)
+
+VoidBtn.MouseButton1Click:Connect(function()
+    if PlayerData.Rebirths >= 10 then -- ลดเงื่อนไขในการทำ Void Rebirth จาก 500 เหลือแค่ 10 รีเบิร์ท
+        PlayerData.Rebirths = PlayerData.Rebirths - 10
+        PlayerData.VoidRebirths = PlayerData.VoidRebirths + 1
+        PlayerData.Cash = 1000000000 -- ให้เงินขวัญถุงหลังสละพลังเก่า 1 Billion!
+        PlayerData.BaseIncome = 1000000
+        PlayerData.UnlockedItems = {}
+        RenderShopPage()
+        RefreshUI()
+    end
+end)
+
+PrevBtn.MouseButton1Click:Connect(function()
+    if PlayerData.CurrentPage > 1 then
+        PlayerData.CurrentPage = PlayerData.CurrentPage - 1
+        RenderShopPage()
+    end
+end)
+
+NextBtn.MouseButton1Click:Connect(function()
+    if PlayerData.CurrentPage < PlayerData.MaxPage then
+        PlayerData.CurrentPage = PlayerData.CurrentPage + 1
+        RenderShopPage()
+    end
+end)
+
+-- เปิดระบบเริ่มต้น
+RenderShopPage()
+RefreshUI()
