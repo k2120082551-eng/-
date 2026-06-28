@@ -1,0 +1,162 @@
+-- [[ LEAK EXECUTOR HUB & TROLL BUTTON ]]
+-- คัดลอกโค้ดทั้งหมดนี้ไปวางในตัวรันสคริปต์ของคุณแล้วกดรันได้เลย
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+
+-- สร้าง ScreenGui ป้องกันการหายตอนเกิดใหม่
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CustomExecutorHub"
+ScreenGui.ResetOnSpawn = false
+
+-- รองรับการรันผ่าน CoreGui (ถ้าตัวรันรองรับ) เพื่อไม่ให้สคริปต์อื่นมาลบได้
+pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+-- หน้าต่างหลัก (Main Frame)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 450, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+MainFrame.Active = true
+MainFrame.Draggable = true -- สามารถคลิกค้างลากเมนูไปมาบนจอได้
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner", MainFrame)
+UICorner.CornerRadius = UDim.new(0, 12)
+
+-- แถบหัวข้อด้านบน (Top Bar)
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
+local TopCorner = Instance.new("UICorner", TopBar)
+TopCorner.CornerRadius = UDim.new(0, 12)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🚀 ULTRA EXECUTOR V2 (TROLL)"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.TextSize = 16
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+-- ปุ่มปิดเมนู (Close Button)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 14
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.Parent = TopBar
+
+local CloseCorner = Instance.new("UICorner", CloseBtn)
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- ช่องสำหรับพิมพ์ใส่สคริปต์ (TextBox / Code Editor)
+local TextBox = Instance.new("TextBox")
+TextBox.Size = UDim2.new(1, -30, 0, 170)
+TextBox.Position = UDim2.new(0, 15, 0, 55)
+TextBox.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+TextBox.Text = "-- วางสคริปต์ของคุณที่นี่..."
+TextBox.TextColor3 = Color3.fromRGB(200, 200, 200)
+TextBox.TextSize = 14
+TextBox.Font = Enum.Font.Code
+TextBox.TextXAlignment = Enum.TextXAlignment.Left
+TextBox.TextYAlignment = Enum.TextYAlignment.Top
+TextBox.ClearTextOnFocus = false
+TextBox.MultiLine = true
+TextBox.Parent = MainFrame
+
+local TextCorner = Instance.new("UICorner", TextBox)
+TextCorner.CornerRadius = UDim.new(0, 8)
+
+-- แถบจัดการปุ่มด้านล่าง
+local ButtonFrame = Instance.new("Frame")
+ButtonFrame.Size = UDim2.new(1, -30, 0, 50)
+ButtonFrame.Position = UDim2.new(0, 15, 1, -60)
+ButtonFrame.BackgroundTransparency = 1
+ButtonFrame.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout", ButtonFrame)
+UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 10)
+
+-- 1. ปุ่มรันสคริปต์ (Execute Button)
+local ExecBtn = Instance.new("TextButton")
+ExecBtn.Size = UDim2.new(0, 130, 1, 0)
+ExecBtn.BackgroundColor3 = Color3.fromRGB(40, 160, 80)
+ExecBtn.Text = "▶ รันสคริปต์"
+ExecBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExecBtn.TextSize = 14
+ExecBtn.Font = Enum.Font.SourceSansBold
+ExecBtn.LayoutOrder = 1
+ExecBtn.Parent = ButtonFrame
+Instance.new("UICorner", ExecBtn).CornerRadius = UDim.new(0, 6)
+
+ExecBtn.MouseButton1Click:Connect(function()
+    -- ใช้ฟังก์ชัน loadstring ในการรันโค้ดที่พิมพ์อยู่ในช่อง TextBox
+    local code = TextBox.Text
+    local success, err = pcall(function()
+        local func = loadstring(code)
+        if func then
+            spawn(func)
+        else
+            warn("สคริปต์มีข้อผิดพลาดในโครงสร้าง!")
+        end
+    end)
+    if not success then
+        warn("ไม่สามารถรันได้: " .. tostring(err))
+    end
+end)
+
+-- 2. ปุ่มลบสคริปต์ (Clear Button)
+local ClearBtn = Instance.new("TextButton")
+ClearBtn.Size = UDim2.new(0, 100, 1, 0)
+ClearBtn.BackgroundColor3 = Color3.fromRGB(180, 110, 30)
+ClearBtn.Text = "🗑️ ลบสคริปต์"
+ClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClearBtn.TextSize = 14
+ClearBtn.Font = Enum.Font.SourceSansBold
+ClearBtn.LayoutOrder = 2
+ClearBtn.Parent = ButtonFrame
+Instance.new("UICorner", ClearBtn).CornerRadius = UDim.new(0, 6)
+
+ClearBtn.MouseButton1Click:Connect(function()
+    TextBox.Text = "" -- ล้างข้อมูลตัวหนังสือทั้งหมดในช่องพิมพ์
+end)
+
+-- 3. ปุ่มแกล้งเพื่อน (Troll Button)
+local TrollBtn = Instance.new("TextButton")
+TrollBtn.Size = UDim2.new(0, 170, 1, 0)
+TrollBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+TrollBtn.Text = "🔥 สคริปต์แจกเงินฟรี (ส่งให้เพื่อน)"
+TrollBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TrollBtn.TextSize = 13
+TrollBtn.Font = Enum.Font.SourceSansBold
+TrollBtn.LayoutOrder = 3
+TrollBtn.Parent = ButtonFrame
+Instance.new("UICorner", TrollBtn).CornerRadius = UDim.new(0, 6)
+
+TrollBtn.MouseButton1Click:Connect(function()
+    -- เมื่อกดปุ่มนี้ ระบบจะสั่งเตะผู้เล่นที่กดออกจากเกมทันที พร้อมข้อความที่ตั้งไว้
+    LocalPlayer:Kick("โต้ไก่มากกกกกกก")
+end)
+
+-- แจ้งเตือนเมื่อตัวรันพร้อมใช้งาน
+game:GetService("StarterGui"):SetCore("SendNotification", {
+	Title = "Executor Ready!",
+	Text = "เปิดใช้งานเมนูตัวรันสคริปต์สำเร็จ!",
+	Duration = 4
+})
